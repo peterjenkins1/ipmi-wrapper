@@ -1,0 +1,58 @@
+#!/bin/bash
+
+# Time saver for ipmitool
+#
+# Reduces:
+# ipmitool -I lanplus -H 10.20.0.14 -U admin -P iloadmin sol activate
+#
+# To:
+# ipmiwrap 10.20.0.14 console
+
+
+usage () {
+  echo "Usage: $0 <host> <command>"
+  echo
+  echo host: hostname or IP address of controller
+  echo "command: <native ipmitool command> e.g. help"
+  echo "command: console | bootnet | reboot"
+  exit ${RC:-2}
+}
+
+# Only check we have 2 or more agruments
+[ $# -ge 2 ] || usage
+
+host=$1
+shift
+command=$*
+ipmitoolcmd="ipmitool -I lanplus -H $host -U admin -E"
+
+case "$command" in
+  console)
+    # Connect to the serial console
+    $ipmitoolcmd sol deactivate
+    $ipmitoolcmd sol activate
+    ;;
+  bootnet)
+    # Boot from the network with PXE boot
+    $ipmitoolcmd chassis bootdev pxe
+    ;;
+  bootdisk)
+    # Boot from the network with PXE boot
+    $ipmitoolcmd chassis bootdev disk
+    ;;
+  reboot)
+    # Reboot the server
+    $ipmitoolcmd chassis power reset
+    ;;
+  bnc)
+    # boot net console
+    $ipmitoolcmd chassis power reset
+    $ipmitoolcmd chassis bootdev pxe
+    $ipmitoolcmd sol deactivate
+    $ipmitoolcmd sol activate
+    ;;
+  *)
+    # Just run whatever was passed in
+    $ipmitoolcmd $command
+    ;;
+esac
